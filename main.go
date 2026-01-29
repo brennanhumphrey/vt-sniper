@@ -89,124 +89,69 @@ func checkSectionOpen(cfg Config) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	table := doc.Find(".dataentrytable").Text()
 	return strings.Contains(table, cfg.CRN), nil
 }
 
-func main() {
-	targetCrn := *crnPtr
-	refreshSeconds := time.Duration(*waitPtr)
-
-	// payload := url.Values{
-	// 	"CAMPUS":           {"0"},      // Blacksburg
-	// 	"TERMYEAR":         {"202601"}, // Spring 2026
-	// 	"CORE_CODE":        {"AR%"},
-	// 	"subj_code":        {"%"},
-	// 	"SCHDTYPE":         {"%"},
-	// 	"CRSE_NUMBER":      {""},
-	// 	"crn":              {TARGET_CRN},
-	// 	"open_only":        {"on"}, // only result if section is open/not full
-	// 	"sess_code":        {"%"},
-	// 	"BTN_PRESSED":      {"FIND class sections"},
-	// 	"inst_name":        {""},
-	// 	"disp_comments_in": {""},
-	// }
-
-	// Initialize as a standard Go map
-	rawMap := map[string][]string{
-		"CAMPUS":           {"0"},      // Blacksburg
-		"TERMYEAR":         {"202601"}, // Spring 2026
-		"CORE_CODE":        {"AR%"},
-		"subj_code":        {"%"},
-		"SCHDTYPE":         {"%"},
-		"CRSE_NUMBER":      {""},
-		"crn":              {targetCrn},
-		"open_only":        {"on"}, // result only if section is open
-		"sess_code":        {"%"},
-		"BTN_PRESSED":      {"FIND class sections"},
-		"inst_name":        {""},
-		"disp_comments_in": {""},
-	}
-	// Convert the map to the url.Values type so it can be passed into http methods
-	payload := url.Values(rawMap)
-
-	found := false
-	attempt := 1
-	for !found {
-		log.Printf("Checking for opening in CRN: %s (Attempt %d)...\n", targetCrn, attempt)
-
-		resp, err := http.PostForm(URL, payload)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if resp.StatusCode != 200 {
-			log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
-		}
-
-		// Load the HTML document
-		doc, err := goquery.NewDocumentFromReader(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		resp.Body.Close() // close early to avoid memory leak
-
-		// this is the html table that would contain the info for a matching sections
-		table := doc.Find(".dataentrytable").Text()
-
-		if strings.Contains(table, targetCrn) {
-			found = true
-		}
-
-		if !found {
-			log.Printf("Not open yet. Waiting %d seconds before trying again.", refreshSeconds)
-		}
-		time.Sleep(refreshSeconds * time.Second)
-
-		attempt++
-	}
-}
-
-func getCourseName(crn string, timetableUrl string, payload url.Values) (string, error) {
-	payload.Set("open_only", "")
-
-	doc, err := sendPostRequest(timetableUrl, payload)
+func getCourseName(cfg Config) (string, error) {
+	payload := cfg.buildPayload(false)
+	doc, err := fetchDocument(timetableUrl, payload)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	var courseName string
 	doc.Find(".dataentrytable tr").Each(func(i int, row *goquery.Selection) {
 		// check if the row contains the target crn
-		if strings.Contains(row.Find("td:nth-child(1)").Text(), crn) {
+		if strings.Contains(row.Find("td:nth-child(1)").Text(), cfg.CRN) {
 			// the course title is in the 3rd td cell
 			courseName = strings.TrimSpace(row.Find("td:nth-child(3)").Text())
 		}
 	})
 
 	if courseName == "" {
-		return "", fmt.Errorf("course not found for CRN: %s", crn)
+		return "", fmt.Errorf("course not found for CRN: %s", cfg.CRN)
 	}
 
 	return courseName, nil
 }
 
-func sendPostRequest(timetableUrl string, payload url.Values) (*goquery.Document, error) {
-	resp, err := http.PostForm(timetableUrl, payload)
+func main() {
+	cfg := parseFlags()
+
+	courseName, err := getCourseName(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to get course name : %v", err)
 	}
-	defer resp.Body.Close()
+	fmt.Printf("Monitoring: %s (CRN: %s)\n\n", courseName, cfg.CRN)
 
-	if resp.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", resp.StatusCode, resp.Status)
+	spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+	for attempt := 1; ; attempt++ {
+		// Animate spinner while waiting
+		fmt.Printf("\r%s [Attempt %d] Checking...                    ", spinner[attempt%len(spinner)], attempt)
+
+		open, err := checkSectionOpen(cfg)
+		checkTime := time.Now().Format("15:04:05")
+
+		if err != nil {
+			fmt.Printf("\r✗ [%s] Error: %v                           ", checkTime, err)
+		} else if open {
+			fmt.Printf("\r\nOPEN SEAT FOUND in %s (CRN: %s)!\n", courseName, cfg.CRN)
+			// TODO: add notification (email, sms, etc.)
+			return
+		}
+
+		// Animate the spinner while waiting
+		waitUntil := time.Now().Add(cfg.CheckInterval)
+		i := 0
+		for time.Now().Before(waitUntil) {
+			remaining := time.Until(waitUntil).Round(time.Second)
+			fmt.Printf("\r%s [%s] Attempt %d - Not open. Next check in %v...     ",
+				spinner[i%len(spinner)], checkTime, attempt, remaining)
+			time.Sleep(100 * time.Millisecond)
+			i++
+		}
 	}
-
-	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return doc, err
 }
