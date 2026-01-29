@@ -1,1 +1,32 @@
+# Compiled binary
+vt-sniper
+
+# HTML test files
 *.html
+
+# Environment variables (API keys!)
+.env
+.env.local
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go specific
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Debug
+__debug_bin*
