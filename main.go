@@ -1,3 +1,5 @@
+// Package main implements a CLI tool for monitoring Virginia Tech course sections
+// and notifying users when seats become available.
 package main
 
 import (
@@ -14,17 +16,26 @@ import (
 	"github.com/resend/resend-go/v2"
 )
 
+// timetableUrl is the Virginia Tech timetable endpoint for course searches
 const timetableUrl = "https://selfservice.banner.vt.edu/ssb/HZSKVTSC.P_ProcRequest"
 
+// ==================================
+// Configuration
+// ==================================
+
+// Config holds the runtime configuration for the course monitor
 type Config struct {
-	CRN           string
-	CheckInterval time.Duration
-	Campus        string
-	Term          string
-	Email         string
+	CRN           string        // Course Reference Number to monitor
+	CheckInterval time.Duration // Time between availability checks
+	Campus        string        // Campus code (0 = Blacksburg)
+	Term          string        // Term code (e.g., 202601 = Spring 2026)
+	Email         string        // Email address for notifications (optional)
 }
 
+// parseFlags parses command-line flags and returns a Config.
+// It exits with an error if required flags are missing.
 func parseFlags() Config {
+	// flag command-line args return pointers
 	crnPtr := flag.String("crn", "", "The CRN of the course section to monitor (required)")
 	waitPtr := flag.Int("wait", 30, "Seconds to wait between checks")
 	emailPtr := flag.String("email", "", "Email for notification")
@@ -37,12 +48,14 @@ func parseFlags() Config {
 	return Config{
 		CRN:           *crnPtr,
 		CheckInterval: time.Duration(*waitPtr) * time.Second,
-		Campus:        "0",      // Blacksburg
-		Term:          "202601", // Spring 2026
+		Campus:        "0",
+		Term:          "202601",
 		Email:         *emailPtr,
 	}
 }
 
+// buildPayload constructs the form data for a timetable search request.
+// If openOnly is true, results are filtered to sections with available seats.
 func (c Config) buildPayload(openOnly bool) url.Values {
 	// Initialize as a standard Go map
 	rawMap := map[string][]string{
@@ -67,6 +80,12 @@ func (c Config) buildPayload(openOnly bool) url.Values {
 	return payload
 }
 
+// ====================================
+// HTTP / Scraping
+// ====================================
+
+// fetchDocument sends a POST request to the given URL and parses the response as HTML.
+// Returns the parsed document or an error if the request fails or returns non-200 status.
 func fetchDocument(targetUrl string, payload url.Values) (*goquery.Document, error) {
 	resp, err := http.PostForm(targetUrl, payload)
 	if err != nil {
@@ -87,6 +106,8 @@ func fetchDocument(targetUrl string, payload url.Values) (*goquery.Document, err
 	return doc, err
 }
 
+// checkSectionOpen checks if the configured course section has available seats.
+// Returns true if the section appears in open-only search results.
 func checkSectionOpen(cfg Config) (bool, error) {
 	payload := cfg.buildPayload(true)
 	doc, err := fetchDocument(timetableUrl, payload)
@@ -98,6 +119,8 @@ func checkSectionOpen(cfg Config) (bool, error) {
 	return strings.Contains(table, cfg.CRN), nil
 }
 
+// getCourseName retrieves the course title for the configured CRN.
+// Returns an error if the CRN is not found in the timetable.
 func getCourseName(cfg Config) (string, error) {
 	payload := cfg.buildPayload(false)
 	doc, err := fetchDocument(timetableUrl, payload)
@@ -121,6 +144,12 @@ func getCourseName(cfg Config) (string, error) {
 	return courseName, nil
 }
 
+// =================================
+// Notifications
+// =================================
+
+// sendEmail sends a notification email using the Resend API.
+// Requires RESEND_API_KEY environment varialbe to be set.
 func sendEmail(to, subject, body string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 	if apiKey == "" {
@@ -140,6 +169,10 @@ func sendEmail(to, subject, body string) error {
 	_, err := client.Emails.Send(params)
 	return err
 }
+
+// ===================================
+// Main
+// ===================================
 
 func main() {
 	cfg := parseFlags()
