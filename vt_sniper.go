@@ -16,8 +16,39 @@ import (
 	"github.com/resend/resend-go/v2"
 )
 
-// timetableUrl is the Virginia Tech timetable endpoint for course searches
-const timetableUrl = "https://selfservice.banner.vt.edu/ssb/HZSKVTSC.P_ProcRequest"
+// DefaultTimetableURL is the Virginia Tech timetable endpoint for course searches
+const DefaultTimetableURL = "https://selfservice.banner.vt.edu/ssb/HZSKVTSC.P_ProcRequest"
+
+// ===================================
+// Interfaces for dependency injection
+// ===================================
+
+// EmailSender abstracts email sending for testability
+type EmailSender interface {
+	Send(to, subject, body string) error
+}
+
+// ResendEmailSender is the production implementation using Resend API
+type ResendEmailSender struct {
+	APIKey string
+}
+
+func (r *ResendEmailSender) Send(to, subject, body string) error {
+	if r.APIKey == "" {
+		return fmt.Errorf("RESEND_API_KEY not set")
+	}
+
+	client := resend.NewClient(r.APIKey)
+	params := &resend.SendEmailRequest{
+		From:    "onboarding@resend.dev",
+		To:      []string{to},
+		Subject: subject,
+		Text:    body,
+	}
+
+	_, err := client.Emails.Send(params)
+	return err
+}
 
 // ==================================
 // Configuration
@@ -30,7 +61,7 @@ type Config struct {
 	CheckInterval int      `json:"checkInterval"` // Time between availability checks
 	Term          string   `json:"term"`          // Term code (e.g., 202601 = Spring 2026)
 	Campus        string   `json:"campus"`        // Campus code (0 = Blacksburg)
-	BaseURL       string   `json:"baseUrl"`       // Optional, defaults to timetableUrl
+	BaseURL       string   `json:"baseUrl"`       // Timetable URL (optional, for testability) (defaults to timetable url)
 }
 
 type CourseStatus struct {
@@ -60,6 +91,9 @@ func loadConfig(path string) (Config, error) {
 	if cfg.Term == "" {
 		cfg.Term = "202601"
 	}
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = DefaultTimetableURL
+	}
 
 	if len(cfg.CRNs) == 0 {
 		return Config{}, fmt.Errorf("no CRNs specified in config")
@@ -72,7 +106,7 @@ func (c Config) getBaseURL() string {
 	if c.BaseURL != "" {
 		return c.BaseURL
 	}
-	return timetableUrl
+	return DefaultTimetableURL
 }
 
 // buildPayload constructs the form data for a timetable search request.
@@ -144,7 +178,7 @@ func (c Config) checkSectionOpen(crn string) (bool, error) {
 // Returns an error if the CRN is not found in the timetable.
 func (c Config) getCourseName(crn string) (string, error) {
 	payload := c.buildPayload(crn, false)
-	doc, err := fetchDocument(timetableUrl, payload)
+	doc, err := fetchDocument(c.BaseURL, payload)
 	if err != nil {
 		return "", err
 	}
@@ -195,10 +229,21 @@ func sendEmail(to, subject, body string) error {
 // Main Function
 // ===================================
 
-func Run(configPath string) error {
-	cfg, err := loadConfig(configPath)
+type RunOptions struct {
+	ConfigPath  string
+	EmailSender EmailSender
+}
+
+func Run(opts RunOptions) error {
+	cfg, err := loadConfig(opts.ConfigPath)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// use provided email sender or create default
+	emailSender := opts.EmailSender
+	if emailSender == nil {
+		emailSender = &ResendEmailSender{APIKey: os.Getenv("RESEND_API_KEY")}
 	}
 
 	// initialize course statuses - filter out invalid CRNs
