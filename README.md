@@ -16,6 +16,10 @@ VT Sniper automates the tedious process of repeatedly checking the Virginia Tech
 - **Real-Time Status Display** - Beautiful terminal UI with live progress updates
 - **Cross-Platform** - Works on macOS, Linux, and Windows
 
+<p align="center">
+    <img src="assets/demo.gif" width="600" alt="VT Sniper Demo">
+</p>
+
 ## Prerequisites
 
 - Go 1.21 or later
