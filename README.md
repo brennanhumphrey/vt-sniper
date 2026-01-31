@@ -6,6 +6,8 @@ A command-line tool for monitoring Virginia Tech course section availability and
     <img src="assets/demo.gif" width="600" alt="VT Sniper Demo">
 </p>
 
+> **Note:** For the best visual experience, use a terminal with a [Nerd Font](https://www.nerdfonts.com/) installed (e.g., FiraCode Nerd Font, JetBrains Mono Nerd Font). The tool will still work without Nerd Fonts, but icons may not display correctly.
+
 ## Overview
 
 VT Sniper automates the tedious process of repeatedly checking the Virginia Tech course registration system for available seats. It monitors one or more Course Reference Numbers (CRNs) and sends you an email notification the moment a seat becomes available in your desired class.
@@ -116,14 +118,6 @@ source ~/.zshrc
 # Run the monitor
 ./vt-sniper
 ```
-
-### Example Output
-
-The CLI features a stylized interface with ANSI colors, box drawing, and Nerd Font icons.
-
-<!-- Add demo gif/video/images here -->
-
-> **Note:** For the best visual experience, use a terminal with a [Nerd Font](https://www.nerdfonts.com/) installed (e.g., FiraCode Nerd Font, JetBrains Mono Nerd Font). The tool will still work without Nerd Fonts, but icons may not display correctly.
 
 ### Tips for Reliable Monitoring
 
