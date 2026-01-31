@@ -22,6 +22,12 @@ const (
 	BoldYellow = "\033[1;33m"
 	BoldRed    = "\033[1;31m"
 	BoldWhite  = "\033[1;37m"
+
+	// Virginia Tech colors (true color ANSI)
+	VTMaroon     = "\033[38;2;99;0;49m"      // Chicago Maroon #630031
+	VTOrange     = "\033[38;2;207;68;32m"    // Burnt Orange #CF4420
+	BoldVTMaroon = "\033[1;38;2;99;0;49m"    // Bold Chicago Maroon
+	BoldVTOrange = "\033[1;38;2;207;68;32m"  // Bold Burnt Orange
 )
 
 // Nerd Font icons (requires a Nerd Font to display correctly)
@@ -55,15 +61,15 @@ const banner = `
 // Box drawing width
 const boxWidth = 50
 
-// PrintBanner displays the ASCII art banner with gradient colors
+// PrintBanner displays the ASCII art banner with VT colors
 func PrintBanner() {
 	fmt.Printf(banner,
-		BoldCyan, Reset,
-		BoldCyan, Reset,
-		Cyan, Reset,
-		Cyan, Reset,
-		Blue, Reset,
-		Blue, Reset,
+		BoldVTOrange, Reset,
+		BoldVTOrange, Reset,
+		VTOrange, Reset,
+		VTOrange, Reset,
+		VTMaroon, Reset,
+		VTMaroon, Reset,
 	)
 	fmt.Printf("%s%s  Virginia Tech Course Availability Monitor%s\n\n", Dim, IconGrad, Reset)
 }
@@ -84,13 +90,13 @@ func boxLine(color string, content string) string {
 
 // PrintConfigBox displays the configuration summary in a styled box
 func PrintConfigBox(crnCount int, email string, interval int, term string) {
-	fmt.Println(boxTop(Dim))
-	fmt.Println(boxLine(Dim, fmt.Sprintf("%s%s  Monitoring %s%d CRNs%s", Cyan, IconTarget, BoldWhite, crnCount, Reset)))
+	fmt.Println(boxTop(VTMaroon))
+	fmt.Println(boxLine(VTMaroon, fmt.Sprintf("%s%s  Monitoring %s%d CRNs%s", VTOrange, IconTarget, BoldWhite, crnCount, Reset)))
 	if email != "" {
-		fmt.Println(boxLine(Dim, fmt.Sprintf("%s%s  %s%s%s", Magenta, IconEmail, White, truncateString(email, 35), Reset)))
+		fmt.Println(boxLine(VTMaroon, fmt.Sprintf("%s%s  %s%s%s", VTOrange, IconEmail, White, truncateString(email, 35), Reset)))
 	}
-	fmt.Println(boxLine(Dim, fmt.Sprintf("%s%s  Interval: %s%ds%s  %s%s  Term: %s%s%s", Yellow, IconClock, BoldWhite, interval, Reset, Cyan, IconCalendar, BoldWhite, term, Reset)))
-	fmt.Println(boxBottom(Dim))
+	fmt.Println(boxLine(VTMaroon, fmt.Sprintf("%s%s  Interval: %s%ds%s  %s%s  Term: %s%s%s", VTOrange, IconClock, BoldWhite, interval, Reset, VTOrange, IconCalendar, BoldWhite, term, Reset)))
+	fmt.Println(boxBottom(VTMaroon))
 	fmt.Println()
 }
 
@@ -101,7 +107,7 @@ func PrintFetchingHeader() {
 
 // PrintCourseFound displays a successfully found course
 func PrintCourseFound(crn, name string) {
-	fmt.Printf("  %s%s%s %s%s%s %s▸%s %s\n", Green, IconCheck, Reset, Cyan, crn, Reset, Dim, Reset, name)
+	fmt.Printf("  %s%s%s %s%s%s %s▸%s %s\n", Green, IconCheck, Reset, VTOrange, crn, Reset, Dim, Reset, name)
 }
 
 // PrintCourseNotFound displays a course that wasn't found
@@ -111,13 +117,13 @@ func PrintCourseNotFound(crn string) {
 
 // PrintDivider displays a horizontal divider line
 func PrintDivider() {
-	fmt.Printf("\n%s────────────────────────────────────────────────────%s\n\n", Dim, Reset)
+	fmt.Printf("\n%s────────────────────────────────────────────────────%s\n\n", VTMaroon, Reset)
 }
 
 // PrintCheckingStatus displays the current checking status with spinner
 func PrintCheckingStatus(spinnerIdx, attempt int, crn string) {
 	fmt.Printf("\r%s%s%s %sAttempt #%d%s %s│%s Checking %s%s%s...                              ",
-		Cyan, Spinner[spinnerIdx%len(Spinner)], Reset, Bold, attempt, Reset, Dim, Reset, Cyan, crn, Reset)
+		VTOrange, Spinner[spinnerIdx%len(Spinner)], Reset, Bold, attempt, Reset, Dim, Reset, VTOrange, crn, Reset)
 }
 
 // PrintCheckError displays an error that occurred while checking a CRN
@@ -139,25 +145,25 @@ func PrintSeatAvailable(name, crn string) {
 
 // PrintEmailSent displays the email notification confirmation
 func PrintEmailSent(email string) {
-	fmt.Printf("  %s%s%s %sNotification sent to %s%s\n\n", Magenta, IconEmail, Reset, Dim, email, Reset)
+	fmt.Printf("  %s%s%s %sNotification sent to %s%s\n\n", VTOrange, IconEmail, Reset, Dim, email, Reset)
 }
 
 // PrintWaitingStatus displays the waiting status with spinner
 func PrintWaitingStatus(spinnerIdx, attempt, found, total int, timeLeft, checkTime string) {
 	fmt.Printf("\r%s%s%s %sAttempt #%d%s %s│%s Found: %s%d%s/%s%d%s %s│%s Next: %s%s%s %s[%s]%s          ",
-		Cyan, Spinner[spinnerIdx%len(Spinner)], Reset,
+		VTOrange, Spinner[spinnerIdx%len(Spinner)], Reset,
 		Bold, attempt, Reset,
 		Dim, Reset,
 		Green, found, Reset,
 		Dim, total, Reset,
 		Dim, Reset,
-		Yellow, timeLeft, Reset,
+		VTOrange, timeLeft, Reset,
 		Dim, checkTime, Reset)
 }
 
 // PrintAllCoursesFound displays the completion message
 func PrintAllCoursesFound() {
-	fmt.Printf("\n%s%s  All courses found! Exiting...%s\n", BoldGreen, IconCheck, Reset)
+	fmt.Printf("\n%s%s  All courses found! Exiting...%s\n", BoldVTOrange, IconCheck, Reset)
 }
 
 // ClearLine clears the current terminal line
