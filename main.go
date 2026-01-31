@@ -3,15 +3,11 @@
 package main
 
 import (
-	"flag"
 	"log"
 )
 
 func main() {
-	configPath := flag.String("config", "config.json", "Path to config file")
-	flag.Parse()
-
-	if err := Run(*configPath); err != nil {
+	if err := Run(RunOptions{ConfigPath: "config.json"}); err != nil {
 		log.Fatal(err)
 	}
 }
